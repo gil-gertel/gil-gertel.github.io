@@ -1,0 +1,129 @@
+<!doctype html>
+  
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My PDF Viewer</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="turn.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.0.943/pdf.min.js">
+    </script>
+    <style>.button{
+display: inline-block;
+padding: 0.1em 0.5em;
+border: 0.16em solid #FFFFFF;
+margin: 1em 0.1em;
+box-sizing: border-box;
+text-decoration: none;
+color: #FFFFFF;
+text-align: center;
+transition: all 0.15s;
+background: none;
+outline: none;
+}
+.button:hover{
+color: #DDDDDD;
+border-color: #DDDDDD;
+}
+.button:active{
+color: #BBBBBB;
+border-color: #BBBBBB;
+}
+</style>
+</head>
+<body style="background-color: lightskyblue">
+	<div id="zoom_controls" style="text-align: center; display: block; width: 100vw; height: 3em; user-select: none; position: fixed; top: 0; z-index: 1; background-color: lightskyblue">  
+            	<button class="button" id="zoom_out">-</button>
+		<button class="button" id="zoom_in">+</button>
+            	<button class="button" id="go_next">הבא</button>
+		<button class="button" id="go_previous">הקודם</button>
+	</div><br>
+<div id="flipbook" style="margin: 3em auto 2em">
+    <div id="clone">
+        <canvas id="pdf_renderer0"></canvas>
+    </div>
+</div>
+<script>
+   var myState = {
+            pdf: null,
+	    zoom: 1
+        }
+   $("#flipbook").hide()
+   pdfjsLib.getDocument('present2.pdf').then(async function(pdf) {
+	myState.pdf = pdf;
+       let n = pdf.numPages;
+       for(var i=n; i>0; i--) {
+        $("#clone").clone().appendTo("#flipbook" )
+        $("#flipbook").children()[n-i+1].id = "div" + (i).toString()
+        $("#flipbook").children()[n-i+1].children[0].id = "pdf_renderer" + (i).toString()
+       await pdf.getPage(i).then((page) => {
+           
+               var canvas = document.getElementById("pdf_renderer" + (i).toString());
+                var ctx = canvas.getContext('2d');
+      
+                var viewport = page.getViewport(1);
+ 
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+          
+                page.render({
+                    canvasContext: ctx,
+                    viewport: viewport
+                });
+            });
+       }
+       $("#flipbook").children()[0].remove()
+       $("#flipbook").show()
+       	$("#flipbook").turn({
+            width: 1186,
+            height: 843,
+            gradients: true,
+            acceleration: true,
+            page: n
+	   });
+    });
+	async function render() {
+		let n = myState.pdf.numPages;
+		for(var i=n; i>0; i--) {
+			await myState.pdf.getPage(i).then((page) => {
+				var canvas = document.getElementById("pdf_renderer" + (i).toString());
+				if (canvas) {
+					var ctx = canvas.getContext('2d');
+					var viewport = page.getViewport(myState.zoom);
+					if (canvas.width !== viewport.width) {
+						canvas.width = viewport.width;
+						canvas.height = viewport.height;
+						
+						page.render({
+							canvasContext: ctx,
+							viewport: viewport
+						});
+					}
+				}
+			});
+		}
+	}
+	
+	document.getElementById('go_previous').addEventListener('click', (e) => {
+		render()
+		$("#flipbook").turn("next");
+	});
+	document.getElementById('go_next').addEventListener('click', (e) => {
+		render()
+		$("#flipbook").turn("previous");
+	});
+	document.getElementById('zoom_in').addEventListener('click', (e) => {
+            myState.zoom *= 1.2;
+            $("#flipbook").turn("zoom", myState.zoom);
+	    render();
+        });
+ 
+        document.getElementById('zoom_out').addEventListener('click', (e) => {
+            myState.zoom /= 1.2;
+            $("#flipbook").turn("zoom", myState.zoom);
+            render();
+        });
+</script>
+</body>
+</html>
